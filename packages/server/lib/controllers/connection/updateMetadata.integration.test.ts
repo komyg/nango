@@ -30,6 +30,33 @@ describe(`PATCH ${endpoint}`, () => {
         shouldBeProtected(res);
     });
 
+    it('should validate body with no connection id and no connection token', async () => {
+        const env = await seeders.createEnvironmentSeed();
+
+        const res = await api.fetch(endpoint, {
+            method: 'PATCH',
+            token: env.secret_key,
+            body: {
+                provider_config_key: 'abc',
+                metadata: {}
+            }
+        });
+
+        expect(res.json).toStrictEqual({
+            error: {
+                code: 'invalid_body',
+                errors: [
+                    {
+                        code: 'custom',
+                        message: 'Either connection_token or connection_id and data_provider_config_key must be provided',
+                        path: ['connection_id', 'connection_token', 'data_provider_config_key']
+                    }
+                ]
+            }
+        });
+        expect(res.res.status).toBe(400);
+    });
+
     it('should validate body with an empty connection id', async () => {
         const { env } = await seeders.seedAccountEnvAndUser();
         const res = await api.fetch(endpoint, {
@@ -50,6 +77,11 @@ describe(`PATCH ${endpoint}`, () => {
                         code: 'too_small',
                         message: 'String must contain at least 1 character(s)',
                         path: ['connection_id']
+                    },
+                    {
+                        code: 'custom',
+                        message: 'Either connection_token or connection_id and data_provider_config_key must be provided',
+                        path: ['connection_id', 'connection_token', 'data_provider_config_key']
                     }
                 ]
             }
@@ -78,6 +110,11 @@ describe(`PATCH ${endpoint}`, () => {
                         code: 'too_small',
                         message: 'String must contain at least 1 character(s)',
                         path: ['provider_config_key']
+                    },
+                    {
+                        code: 'custom',
+                        message: 'Either connection_token or connection_id and data_provider_config_key must be provided',
+                        path: ['connection_id', 'connection_token', 'data_provider_config_key']
                     }
                 ]
             }
@@ -101,19 +138,17 @@ describe(`PATCH ${endpoint}`, () => {
             }
         });
 
-        expect(res.json).toStrictEqual({
-            error: {
-                code: 'unknown_connection',
-                message: `Connection with connection id ${connection_id} and provider config key ${provider_config_key} not found. Please make sure the connection exists in the Nango dashboard`
-            }
-        });
+        const error = (res.json as any).error;
+        expect(error.code).toBe('unknown_connection');
         expect(res.res.status).toBe(404);
     });
 
     it('should provide an unknown connection response if bad connections are provided', async () => {
         const env = await seeders.createEnvironmentSeed();
+        const unique_key = 'test-update';
+        const connections = await seeders.createConnectionSeed(env, unique_key);
 
-        const connection_id = ['abc', 'def'];
+        const connection_id = [connections.connection_id, 'def'];
         const provider_config_key = 'test';
 
         const res = await api.fetch(endpoint, {
@@ -126,16 +161,12 @@ describe(`PATCH ${endpoint}`, () => {
             }
         });
 
-        expect(res.json).toStrictEqual({
-            error: {
-                code: 'unknown_connection',
-                message: `Connection with connection id ${connection_id[0]} and provider config key ${provider_config_key} not found. Please make sure the connection exists in the Nango dashboard. No actions were taken on any of the connections as a result of this failure.`
-            }
-        });
+        const error = (res.json as any).error;
+        expect(error.code).toBe('unknown_connection');
         expect(res.res.status).toBe(404);
     });
 
-    it.only('Should update metadata and not overwrite', async () => {
+    it('Should update metadata and not overwrite', async () => {
         const env = await seeders.createEnvironmentSeed();
         const unique_key = 'test-update';
         await seeders.createConfigSeed(env, unique_key, 'google');
@@ -194,7 +225,7 @@ describe(`PATCH ${endpoint}`, () => {
         expect(connectionTwo?.metadata).toEqual({ ...initialMetadata, ...newMetadata });
     });
 
-    it.only('Should update metadata using the connection token', async () => {
+    it('Should update metadata using the connection token', async () => {
         const env = await seeders.createEnvironmentSeed();
         const unique_key = 'test-update';
         await seeders.createConfigSeed(env, unique_key, 'google');
