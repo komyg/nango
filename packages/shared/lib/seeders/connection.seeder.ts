@@ -25,8 +25,10 @@ export const createConnectionSeeds = async (env: DBEnvironment): Promise<number[
 
 export const createConnectionSeed = async (env: DBEnvironment, provider: string): Promise<NangoConnection> => {
     const name = Math.random().toString(36).substring(7);
+    const connectionToken = crypto.randomUUID();
     const result = await connectionService.upsertConnection({
         connectionId: name,
+        connectionToken,
         providerConfigKey: provider,
         provider: 'google',
         parsedRawCredentials: {} as AuthCredentials,
@@ -39,7 +41,7 @@ export const createConnectionSeed = async (env: DBEnvironment, provider: string)
         throw new Error('Could not create connection seed');
     }
 
-    return { id: result[0].connection.id!, connection_id: name, provider_config_key: provider, environment_id: env.id };
+    return { id: result[0].connection.id!, connection_id: name, provider_config_key: provider, environment_id: env.id, connection_token: connectionToken };
 };
 
 export const deleteAllConnectionSeeds = async (): Promise<void> => {
