@@ -7,6 +7,13 @@ export interface MetadataBody {
     metadata: Metadata;
 }
 
+export interface UpdateMetadataBody {
+    connection_id?: string | string[] | undefined;
+    connection_token?: string | string[] | undefined;
+    provider_config_key?: string | undefined;
+    metadata: Metadata;
+}
+
 type MetadataError = ApiError<'invalid_body'> | ApiError<'unknown_connection'>;
 
 export type SetMetadata = Endpoint<{
@@ -20,7 +27,7 @@ export type SetMetadata = Endpoint<{
 export type UpdateMetadata = Endpoint<{
     Method: 'PATCH';
     Path: '/connection/metadata';
-    Body: MetadataBody;
+    Body: UpdateMetadataBody;
     Error: MetadataError;
-    Success: MetadataBody;
+    Success: UpdateMetadataBody;
 }>;

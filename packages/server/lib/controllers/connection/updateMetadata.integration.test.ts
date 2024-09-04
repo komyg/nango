@@ -135,7 +135,7 @@ describe(`PATCH ${endpoint}`, () => {
         expect(res.res.status).toBe(404);
     });
 
-    it('Should update metadata and not overwrite', async () => {
+    it.only('Should update metadata and not overwrite', async () => {
         const env = await seeders.createEnvironmentSeed();
         const unique_key = 'test-update';
         await seeders.createConfigSeed(env, unique_key, 'google');
@@ -187,6 +187,64 @@ describe(`PATCH ${endpoint}`, () => {
         expect(resTwo.json).toEqual({
             connection_id,
             provider_config_key,
+            metadata: newMetadata
+        });
+
+        const { response: connectionTwo } = await connectionService.getConnection(connection_id, provider_config_key, env.id);
+        expect(connectionTwo?.metadata).toEqual({ ...initialMetadata, ...newMetadata });
+    });
+
+    it.only('Should update metadata using the connection token', async () => {
+        const env = await seeders.createEnvironmentSeed();
+        const unique_key = 'test-update';
+        await seeders.createConfigSeed(env, unique_key, 'google');
+        const connections = await seeders.createConnectionSeed(env, unique_key);
+
+        const { connection_token, connection_id, provider_config_key } = connections;
+        if (!connection_token) {
+            throw new Error('Connection token is not defined');
+        }
+
+        const initialMetadata = {
+            name: 'test',
+            host: 'test'
+        };
+
+        const res = await api.fetch(endpoint, {
+            method: 'PATCH',
+            token: env.secret_key,
+            body: {
+                connection_token,
+                metadata: initialMetadata
+            }
+        });
+
+        expect(res.res.status).toBe(200);
+        expect(res.json).toEqual({
+            connection_token,
+            metadata: initialMetadata
+        });
+
+        const { response: connection } = await connectionService.getConnection(connection_id, provider_config_key, env.id);
+
+        expect(connection?.metadata).toEqual(initialMetadata);
+
+        const newMetadata = {
+            additionalName: 'test23'
+        };
+
+        const resTwo = await api.fetch(endpoint, {
+            method: 'PATCH',
+            token: env.secret_key,
+            body: {
+                connection_token,
+                metadata: newMetadata
+            }
+        });
+
+        expect(resTwo.res.status).toBe(200);
+        expect(resTwo.json).toEqual({
+            connection_token,
             metadata: newMetadata
         });
 

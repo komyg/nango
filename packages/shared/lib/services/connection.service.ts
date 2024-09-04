@@ -489,6 +489,30 @@ class ConnectionService {
         return result || null;
     }
 
+    public async getConnectionsByConnectionIds(connection_ids: string[], provider_config_key: string, environment_id: number): Promise<StoredConnection[]> {
+        const result = await db.knex
+            .select<StoredConnection[]>('*')
+            .from<StoredConnection>('_nango_connections')
+            .where({
+                provider_config_key,
+                environment_id,
+                deleted: false
+            })
+            .whereIn('connection_id', connection_ids);
+
+        return result || [];
+    }
+
+    public async getConnectionsByTokens(connection_tokens: string[]): Promise<StoredConnection[]> {
+        const result = await db.knex
+            .select<StoredConnection[]>('*')
+            .from<StoredConnection>('_nango_connections')
+            .where({ deleted: false })
+            .whereIn('connection_token', connection_tokens);
+
+        return result || [];
+    }
+
     public async getConnection(connectionId: string, providerConfigKey: string, environment_id: number): Promise<ServiceResponse<Connection>> {
         if (!environment_id) {
             const error = new NangoError('missing_environment');
@@ -696,7 +720,7 @@ class ConnectionService {
             .update({ connection_config: config });
     }
 
-    public async updateMetadata(connections: Connection[], metadata: Metadata): Promise<void> {
+    public async updateMetadata(connections: Connection[] | StoredConnection[], metadata: Metadata): Promise<void> {
         await db.knex.transaction(async (trx) => {
             for (const connection of connections) {
                 const newMetadata = { ...connection.metadata, ...metadata };
